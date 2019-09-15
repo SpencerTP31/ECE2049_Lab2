@@ -5,6 +5,7 @@
 #include <msp430.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "notes.h"
 
 /* Peripherals.c and .h are where the functions that implement
  * the LEDs and keypad, etc are. It is often useful to organize
@@ -101,9 +102,9 @@ void configureUserLEDs(char outputState) {
 // Total of 3 bytes
 typedef struct Note
 {
-    char pitch; // Period in ACLK ticks
-    char duration; // Duration in milliseconds
-    char LED; // Mask containing setting for all 4 LEDs
+    int pitch; // Period in ACLK ticks
+    int duration; // Duration in milliseconds
+    int delay; // Silence after the note in milliseconds
 } Note;
 
 
@@ -117,9 +118,63 @@ void main(void)
     unsigned char keyPressed = 0, lastKeyPressed = 0;
     unsigned long int mainCounter = 0, auxCounter = 0, auxCounter2 = 0;
     State state = WELCOME_SCREEN;
-    Alien aliens[50]; //Alien* aliens = (Alien*) malloc(50 * sizeof(Alien));
-    int alienCount = 0;
-    int level = 1;
+    Note notes[] = {
+      {NOTE_D5, 100, 80},
+      {NOTE_F5, 100, 80},
+      {NOTE_D6, 200, 250},
+
+      {NOTE_D5, 100, 80},
+      {NOTE_F5, 100, 80},
+      {NOTE_D6, 200, 250},
+
+      {NOTE_E6, 200, 200},
+      {NOTE_F6, 100, 100},
+      {NOTE_E6, 100, 80},
+      {NOTE_F6, 100, 80},
+      {NOTE_E6, 100, 80},
+      {NOTE_C6, 100, 80},
+      {NOTE_A5, 100, 300},
+
+      {NOTE_D5, 200,100},
+      {NOTE_F5, 100,100},
+      {NOTE_G5, 100,100},
+      {NOTE_A5, 100,500},
+
+      {NOTE_A5, 200,100},
+      {NOTE_D5, 200,100},
+      {NOTE_F5, 100,100},
+      {NOTE_G5, 100,100},
+      {NOTE_E5, 100, 500},
+
+      {NOTE_D5, 100,80},
+      {NOTE_F5, 100,80},
+      {NOTE_D6, 200,250},
+
+      {NOTE_D5, 100,80},
+      {NOTE_F5, 100,80},
+      {NOTE_D6, 200,250},
+
+      {NOTE_E6, 200,200},
+      {NOTE_F6, 100,100},
+      {NOTE_E6, 100,80},
+      {NOTE_F6, 100,80},
+      {NOTE_E6, 100,80},
+      {NOTE_C6, 100,80},
+      {NOTE_A5, 100,300},
+
+      {NOTE_D5, 200,100},
+      {NOTE_F5, 100,100},
+      {NOTE_G5, 100,100},
+      {NOTE_A5, 300, 100},
+      {NOTE_A5, 200, 100},
+      {NOTE_D5, 2000, 2000}
+    };
+
+    int noteCounter = 0, noteCount = 41;
+    Note currentNote = notes[0];
+    BuzzerOnFreq(currentNote.pitch);
+    auxCounter2 = currentNote.duration;
+    bool shouldPlay = false;
 
     WDTCTL = WDTPW | WDTHOLD;    // Stop watchdog timer
 
@@ -130,135 +185,24 @@ void main(void)
     while (1)
     {
         keyPressed = getKey();
-        switch (state)
-        {
-        case WELCOME_SCREEN:
-            drawWelcome();
-            BuzzerOnPitch(48);
-            state = WAIT_FOR_START;
-            break;
-        case WAIT_FOR_START:
-            if (keyPressed == '*')
-            {
-                state = START_COUNT_DOWN;
-                BuzzerOff();
-            }
-            break;
-        case START_COUNT_DOWN:
-            BuzzerOnPitch(20);
-            auxCounter = mainCounter;
-            state = COUNT_DOWN_SCREEN;
-        case COUNT_DOWN_SCREEN:
-            if (drawCountdown(mainCounter, auxCounter))
-            {
-                state = START_LEVEL;
-            }
-            break;
-        case NEXT_LEVEL_SCREEN:
-            drawNextLevel(level);
-            state = WAIT_FOR_START;
-            break;
-        case START_LEVEL:
-            BuzzerOff();
-            // Create aliens based on level number (minimum of one, maximum of 50)
-            alienCount = ((rand() % (level * level)) + 1) % 50;
 
-            // Height tracker is used to tell if there is already a current alien in the row
-            int heightTracker[5] = { 0, 0, 0, 0, 0 };
 
-            int currentRow = 0;
-
-            for (i = 0; i < alienCount; i++)
-            {
-                int currentColumn = rand() % 5;
-
-                if (heightTracker[currentColumn])
-                {
-                    // There's already an alien in this row of this column
-                    currentRow++;
-                    int j;
-                    for (j = 0; j < 5; j++)
-                    {
-                        heightTracker[j] = 0;
-                    }
-                }
-                heightTracker[currentColumn] = heightTracker[currentColumn] + 1; // Can't use ++ or += because that doesn't modify the value in the array (I think)
-
-                aliens[i].x = 15 * (currentColumn + 1) + 3;
-                aliens[i].y = 10 - (20 * currentRow);
-                aliens[i].key = "01234"[currentColumn];
-                aliens[i].visible = true;
-            }
-            state = PLAYING_GAME;
-            break;
-        case PLAYING_GAME:
-            Graphics_clearDisplay(&g_sContext);
-
-            // Check if key is pressed to destroy each alien
-            // If yes, destroy the lowest one with the pressed key
-            // If all aliens are destroyed, increment level counter and move to START_LEVEL
-            if (keyPressed != 0 && lastKeyPressed != keyPressed)
-            {
-                for (i = 0; i < alienCount; i++)
-                {
-                    Alien currentAlien = aliens[i];
-                    if (currentAlien.visible && currentAlien.key == keyPressed)
-                    {
-                        // Note the direct access to the struct in the array
-                        aliens[i].visible = false;
-                        BuzzerOnPitch(150 + rand() % 20);
-                        auxCounter2 = 5;
-
-                        bool anyVisible;
-
-                        // It's okay to hijack i here because we're about to break out of the loop anyway
-                        for (i = 0, anyVisible = false; i < alienCount; i++)
-                        {
-                            if (aliens[i].visible)
-                            {
-                                anyVisible = true;
-                                break; // May as well short circuit, we only care if the level is still going on or not
-                            }
-                        }
-                        if (!anyVisible)
-                        {
-                            level++;
-                            state = NEXT_LEVEL_SCREEN;
-                        }
-                        break;
-                    }
-                }
-            }
-
-            // If an alien reaches the bottom, move to LOSS
-            for (i = 0; i < alienCount; i++)
-            {
-                Alien currentAlien = aliens[i];
-                if (currentAlien.visible)
-                {
-                    if (currentAlien.y >= levelBottom)
-                    {
-                        state = LOSS_SCREEN;
-                    }
-                    aliens[i].y += level / 2 + 1; // This is how fast the aliens descend
-                }
-            }
-
-            drawAliens(aliens, alienCount);
-            break;
-        case LOSS_SCREEN:
-            drawLoss();
-            BuzzerOn();
-            state = WAIT_FOR_START;
-            level = 1; // Reset the level so that you start at the beginning of the game
-            break;
-        }
         mainCounter++;
         if (auxCounter2 > 0)
         {
             auxCounter2--;
-            if(!auxCounter2)
-                BuzzerOff();
+            if(!auxCounter2) {
+                if(shouldPlay) {
+                    noteCounter++;
+                    currentNote = notes[noteCounter % noteCount];
+                    BuzzerOnFreq(currentNote.pitch);
+                    auxCounter2 = currentNote.duration * 7;
+                } else {
+                    BuzzerOff();
+                    auxCounter2 = currentNote.delay * 7;
+                }
+                shouldPlay = !shouldPlay;
+            }
         }
         lastKeyPressed = keyPressed;
     }
