@@ -5,14 +5,8 @@
 #include <msp430.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "song.h"
-
-/* Peripherals.c and .h are where the functions that implement
- * the LEDs and keypad, etc are. It is often useful to organize
- * your code by putting like functions together in files.
- * You include the header associated with that file(s)
- * into the main file of your project. */
-#include "peripherals.h"
+#include <inc/song.h>
+#include <inc/peripherals.h>
 
 typedef enum State
 {
@@ -46,20 +40,11 @@ void setSmolLEDs(unsigned char);
 unsigned char getButtonState();
 void configTimerA2();
 void configButtons();
-//void drawAliens(Alien*, int);
 
-// What data structure(s) will you use to store pitch, duration and the corresponding LED? What length songs will you eventually
-// want to play? Given how you choose to save your notes, etc., how much memory will that require?
-
-// Total of 3 bytes
-
-// Declare globals here
-
-// Main
 void main(void)
 {
-    int i, score = 0;
-    unsigned char keyPressed = 0, lastKeyPressed = 0, buttonsPressed;
+    int score = 0;
+    unsigned char keyPressed = 0, buttonsPressed;
     unsigned long int startTime, deltaTime;
     State state = WELCOME_SCREEN;
 
@@ -80,6 +65,9 @@ void main(void)
     while (1)
     {
         keyPressed = getKey();
+
+        // Reset override
+        // This works at any time except for while waiting on the welcome screen.
         if (keyPressed == '#' && state != WAIT_FOR_START)
         {
             state = RESET;
@@ -88,10 +76,12 @@ void main(void)
         switch (state)
         {
         case WELCOME_SCREEN:
+            // Draw the welcome screen and wait until key input
             drawWelcome();
             state = WAIT_FOR_START;
             break;
         case WAIT_FOR_START:
+            // If the key is pressed, transition to countdown
             if (keyPressed == '*')
             {
                 state = START_COUNT_DOWN;
@@ -104,35 +94,37 @@ void main(void)
             }
             break;
         case START_COUNT_DOWN:
+            // Save the timestamp for the beginning of the countdown and transition to the next state
             startTime = clock;
             state = COUNT_DOWN_SCREEN;
             break;
         case COUNT_DOWN_SCREEN:
+            // Once the countdown is complete, transition to the beginnning of the level
             deltaTime = clock - startTime; // 1 deltaTime unit = 5ms
             if (drawCountdown(deltaTime))
             {
                 state = START_LEVEL;
             }
             break;
-        case NEXT_LEVEL_SCREEN:
-//                    drawNextLevel(level);
-            state = WAIT_FOR_START;
-            break;
         case START_LEVEL:
-            startTime = clock;
-            currentSong = windmillHut;
+            // Select song
+            currentSong = windmillHut; // TODO: Add song select menu
             currentNote = currentSong.notes[0];
+
+            // Start playing the first note
             BuzzerOnFreq(currentNote.frequency);
+            startTime = clock;
             currentNoteScored = false;
-//            auxCounter2 = currentNote.eighths * 700;
+
+            // Transition to main gameplay loop
             state = PLAYING_GAME;
             break;
         case PLAYING_GAME:
-            // TODO: Check if we should be playing the next note based on clock
+            // Calculate the time since the last note started
             deltaTime = clock - startTime; // 1 deltaTime unit = 5ms
 
-            buttonsPressed = getButtonState();
-
+            // If a note is currently playing and the duration of the note has expired,
+            // turn off the buzzer and wait until the next note
             if (shouldPlay
                     && deltaTime
                             > (currentSong.noteDuration * currentNote.eighths
@@ -140,12 +132,23 @@ void main(void)
             {
                 BuzzerOff();
                 shouldPlay = false;
-                startTime = clock;
+                startTime = clock; // Reset the timer
             }
+            // If a note is not currently playing and the duration of the gap between notes
+            // has expired, transition to the next note
             else if (!shouldPlay
                     && deltaTime > (currentSong.silenceDuration / 5))
             {
+                // If no button was pressed during the current note duration, reduce score
+                if (!currentNoteScored)
+                    score--;
+
+                // Advance to the next note in the sequence
                 noteCounter++;
+                currentNote = currentSong.notes[noteCounter
+                        % currentSong.noteCount];
+
+                // If the song is complete, figure out if the player has won or lost and transition to the appropriate state
                 if (noteCounter == currentSong.noteCount)
                 {
                     // TODO: Revamp scoring
@@ -154,42 +157,44 @@ void main(void)
                     else
                         state = LOSS_SCREEN;
                 }
-                currentNote = currentSong.notes[noteCounter
-                        % currentSong.noteCount];
+
+                // Play the next note in the song
                 BuzzerOnFreq(currentNote.frequency);
-                setSmolLEDs(0);
+                setSmolLEDs(0); //
                 shouldPlay = true;
-                if (!currentNoteScored)
-                    score--;
                 currentNoteScored = false;
                 startTime = clock;
             }
 
             // Display the current note button on the board LEDs
             setLEDs(currentNote.button);
+
+            buttonsPressed = getButtonState();
+
+            // If the current note has not yet been scored (i.e. no buttons have yet been pressed)
+            // and the note is not a rest, check if it should be scored
             if (!currentNoteScored && currentNote.frequency != 0)
             {
-                                if (buttonsPressed)
+                // If any buttons are pressed, we need to score the player
+                if (buttonsPressed)
                 {
+                    // If the correct button is pressed, light the green user LED and add to the player's score
                     if (buttonsPressed & currentNote.button)
                     {
                         setSmolLEDs(BIT1);
                         score += 3;
                     }
+                    // If the incorrect button is pressed, light the red LED and subtract from the player's score
                     else
                     {
                         setSmolLEDs(BIT0);
                         score--;
                     }
+                    // Mark the current note as scored
                     currentNoteScored = true;
                     // TODO: Partial credit if you fix your mistake; for best game award
                 }
             }
-
-            // If the current note has not already been scored
-            // If the correct button is pressed, add to score and mark the current note as scored
-            // If the note ends and the correct button has not been pressed, do not add to score
-
             break;
         case WIN_SCREEN:
             drawWin();
@@ -209,8 +214,6 @@ void main(void)
             state = WELCOME_SCREEN;
             break;
         }
-
-        lastKeyPressed = keyPressed;
     }
 }
 
@@ -297,8 +300,9 @@ void drawNextLevel(int level)
     snprintf(buffer, 9, "Level %d", level);
 
     // Write some text to the display
-    Graphics_drawStringCentered(&g_sContext, buffer, AUTO_STRING_LENGTH, 48, 35,
-    TRANSPARENT_TEXT);
+    Graphics_drawStringCentered(&g_sContext, (uint8_t*) buffer,
+                                AUTO_STRING_LENGTH, 48, 35,
+                                TRANSPARENT_TEXT);
 
     Graphics_drawStringCentered(&g_sContext, "Press *", AUTO_STRING_LENGTH, 48,
                                 70, TRANSPARENT_TEXT);
@@ -312,14 +316,17 @@ void drawNextLevel(int level)
     Graphics_flushBuffer(&g_sContext);
 }
 
+
+// Draw the countdown screen, returning true if the countdown is complete
 bool drawCountdown(int timePassed)
 {
+    // countdownState is used to track the current display state
     if (countdownState == 0 && timePassed > 0)
     {
         Graphics_clearDisplay(&g_sContext); // Clear the display
         Graphics_drawStringCentered(&g_sContext, "3", AUTO_STRING_LENGTH, 48,
                                     50, TRANSPARENT_TEXT);
-        setLEDs(0x08);
+        setLEDs(BIT3);
         setSmolLEDs(BIT0);
         Graphics_flushBuffer(&g_sContext);
         countdownState = 1;
@@ -329,7 +336,7 @@ bool drawCountdown(int timePassed)
         Graphics_clearDisplay(&g_sContext); // Clear the display
         Graphics_drawStringCentered(&g_sContext, "2", AUTO_STRING_LENGTH, 48,
                                     50, TRANSPARENT_TEXT);
-        setLEDs(0x04);
+        setLEDs(BIT2);
         setSmolLEDs(BIT1);
         Graphics_flushBuffer(&g_sContext);
         countdownState = 2;
@@ -339,7 +346,7 @@ bool drawCountdown(int timePassed)
         Graphics_clearDisplay(&g_sContext); // Clear the display
         Graphics_drawStringCentered(&g_sContext, "1", AUTO_STRING_LENGTH, 48,
                                     50, TRANSPARENT_TEXT);
-        setLEDs(0x02);
+        setLEDs(BIT1);
         setSmolLEDs(BIT0);
         Graphics_flushBuffer(&g_sContext);
         countdownState = 3;
@@ -349,7 +356,7 @@ bool drawCountdown(int timePassed)
         Graphics_clearDisplay(&g_sContext); // Clear the display
         Graphics_drawStringCentered(&g_sContext, "Go!", AUTO_STRING_LENGTH, 48,
                                     50, TRANSPARENT_TEXT);
-        setLEDs(0x0E);
+        setLEDs(BIT3 | BIT2 | BIT1 | BIT0);
         setSmolLEDs(BIT1 | BIT0);
         Graphics_flushBuffer(&g_sContext);
         countdownState = 4;
@@ -365,22 +372,7 @@ bool drawCountdown(int timePassed)
     return false;
 }
 
-//void drawAliens(Alien* aliens, int alienCount)
-//{
-//    int i;
-//    for (i = 0; i < alienCount; i++)
-//    {
-//        Alien currentAlien = aliens[i];
-//        if (currentAlien.visible && currentAlien.y >= 0)
-//        {
-//            unsigned char* str = &(currentAlien.key);
-//            Graphics_drawStringCentered(&g_sContext, str, 1, currentAlien.x,
-//                                        currentAlien.y, TRANSPARENT_TEXT);
-//        }
-//    }
-//    Graphics_flushBuffer(&g_sContext);
-//}
-
+// Configure the Timer A2 ISR
 #pragma vector=TIMER2_A0_VECTOR
 __interrupt void Timer_A2_ISR(void)
 {
@@ -433,7 +425,7 @@ void configTimerA2(void)
     _BIS_SR(GIE); // Enable interrupts now, so we don't have to do it in main later
 }
 
-// Write  a  function  that  returns  the  state  of  the  lab  board  buttons  with  1=pressed  and  0=not pressed.
+// Get the state of the lab board buttons
 unsigned char getButtonState()
 {
     unsigned char ret = 0x00;
@@ -452,6 +444,7 @@ unsigned char getButtonState()
     return ret;
 }
 
+// Set the lab board LED state
 void setLEDs(unsigned char state)
 {
     unsigned char mask = 0;
@@ -470,6 +463,7 @@ void setLEDs(unsigned char state)
     P6OUT |= mask;
 }
 
+// Configure the LaunchPad user LEDs
 void configSmolLEDs()
 {
     // P4.7, P1.0
@@ -484,18 +478,16 @@ void configSmolLEDs()
     P4OUT &= ~(BIT7);    // Set off by default
 }
 
-// Write a complete C function to configure and light 2 user LEDs on the MSP430F5529 Launchpad board based on the char argument
-// passed. If BIT0 of the argument = 1, LED1 is lit and if BIT0=0 then LED1 is off. Similarly, if BIT1 of the argument = 1, LED2
-// is lit and if BIT1=0 then LED2 is off.
+// Set the LaunchPad user LED state
 void setSmolLEDs(unsigned char outputState)
 {
-    // xxxx | 0001 = xxx1
-    // xxxx & 0001 = 000x
+    // If the first LED should be on, turn it on, otherwise turn it off.
     if (outputState & BIT0)
         P1OUT |= BIT0;
     else
         P1OUT &= ~BIT0;
 
+    // If the second LED should be on, turn it on, otherwise turn it off.
     if (outputState & BIT1)
         P4OUT |= BIT7;
     else

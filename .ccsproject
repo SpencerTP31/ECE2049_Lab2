@@ -2,7 +2,7 @@
 <?ccsproject version="1.0"?>
 <projectOptions>
 	<deviceFamily value="MSP430"/>
-	<connection value="common/targetdb/connections/TIMSP430-USB.xml"/>
+	<connection value="common/targetdb/connections/uart_connection.xml"/>
 	<isTargetManual value="false"/>
 	<origin value="C:/Users/Fern/Documents/GitHub/ECE2049_Lab2"/>
 </projectOptions>

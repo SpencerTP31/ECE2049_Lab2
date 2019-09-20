@@ -14,7 +14,7 @@
  *
  */
 
-#include "peripherals.h"
+#include <inc/peripherals.h>
 
 
 // Globals

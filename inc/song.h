@@ -8,7 +8,7 @@
 #ifndef SONG_H_
 #define SONG_H_
 
-#include "notes.h"
+#include <inc/notes.h>
 
 
 typedef enum NoteModifier {

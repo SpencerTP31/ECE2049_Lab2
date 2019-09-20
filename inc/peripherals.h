@@ -11,10 +11,10 @@
 
 #include <msp430.h>
 #include <stdint.h>
-#include "grlib.h"
+#include <grlib.h>
 
-#include "LcdDriver/Sharp96x96.h"
-#include "LcdDriver/HAL_MSP_EXP430FR5529_Sharp96x96.h"
+#include <LcdDriver/Sharp96x96.h>
+#include <LcdDriver/HAL_MSP_EXP430FR5529_Sharp96x96.h>
 
 
 /*
