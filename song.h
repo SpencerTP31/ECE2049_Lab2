@@ -29,54 +29,55 @@ typedef struct Song
 {
     const Note* notes;
     short noteCount;
-    short msBetweenNotes;
+    short silenceDuration;
+    short noteDuration; // Duration of an eighth note in milliseconds (60000/2) / bpm
 } Song;
 
 
 const Note windmillHutNotes[] = {
-//     { NOTE_REST, 2, REST},
-//     {   NOTE_D5, 2, NONE},
-//     {   NOTE_D5, 2, NONE},
-//     { NOTE_REST, 1, REST},
-//     {   NOTE_E5, 5, NONE},
-//     { NOTE_REST, 2, REST},
-//     {   NOTE_F5, 2, NONE},
-//     {   NOTE_F5, 2, NONE},
-//     { NOTE_REST, 1, REST},
-//     {   NOTE_E5, 5, NONE},
-//     { NOTE_REST, 2, REST},
-//     {   NOTE_D5, 2, NONE},
-//     {   NOTE_D5, 2, NONE},
-//     { NOTE_REST, 1, REST},
-//     {   NOTE_E5, 5, NONE},
-//     { NOTE_REST, 2, REST},
-//     {   NOTE_F5, 2, NONE},
-//     {   NOTE_F5, 2, NONE},
-//     { NOTE_REST, 1, REST},
-//     {   NOTE_E5, 5, NONE},
-     {   NOTE_D5, 1, NONE, 1},
-     {   NOTE_F5, 1, NONE, 1},
-     {   NOTE_D6, 4, NONE, 1},
-     {   NOTE_D5, 1, NONE, 1},
-     {   NOTE_F5, 1, NONE, 1},
-     {   NOTE_D6, 4, NONE, 1},
-     {   NOTE_E6, 3, NONE, 1},
-     {   NOTE_F6, 1, STACCATO, 1},
-     {   NOTE_E6, 1, STACCATO, 1},
-     {   NOTE_F6, 1, STACCATO, 1},
-     {   NOTE_E6, 1, NONE, 1},
-     {   NOTE_C5, 1, STACCATO, 1},
-     {   NOTE_A5, 4, NONE, 1},
-     {   NOTE_A5, 1, NONE, 1},
-     {   NOTE_D5, 1, NONE, 1},
-     {   NOTE_F5, 1, STACCATO, 1},
-     {   NOTE_G5, 1, STACCATO, 1},
-     {   NOTE_A5, 6, NONE, 1},
-     {   NOTE_A5, 1, NONE, 1},
-     {   NOTE_D5, 1, NONE, 1},
-     {   NOTE_F5, 1, STACCATO, 1},
-     {   NOTE_G5, 1, STACCATO, 1},
-     {   NOTE_D5, 6, NONE, 1},
+     { NOTE_REST, 2, REST, BIT7},
+     {   NOTE_D5, 2, NONE, BIT0},
+     {   NOTE_D5, 2, NONE, BIT0},
+     { NOTE_REST, 1, REST, BIT7},
+     {   NOTE_E5, 5, NONE, BIT1},
+     { NOTE_REST, 2, REST, BIT7},
+     {   NOTE_F5, 2, NONE, BIT2},
+     {   NOTE_F5, 2, NONE, BIT2},
+     { NOTE_REST, 1, REST, BIT7},
+     {   NOTE_E5, 5, NONE, BIT1},
+     { NOTE_REST, 2, REST, BIT7},
+     {   NOTE_D5, 2, NONE, BIT0},
+     {   NOTE_D5, 2, NONE, BIT0},
+     { NOTE_REST, 1, REST, BIT7},
+     {   NOTE_E5, 5, NONE, BIT1},
+     { NOTE_REST, 2, REST, BIT7},
+     {   NOTE_F5, 2, NONE, BIT2},
+     {   NOTE_F5, 2, NONE, BIT2},
+     { NOTE_REST, 1, REST, BIT7},
+     {   NOTE_E5, 5, NONE, BIT1},
+     {   NOTE_D5, 1, NONE, BIT0},
+     {   NOTE_F5, 1, NONE, BIT2},
+     {   NOTE_D6, 4, NONE, BIT0},
+     {   NOTE_D5, 1, NONE, BIT0},
+     {   NOTE_F5, 1, NONE, BIT2},
+     {   NOTE_D6, 4, NONE, BIT0},
+     {   NOTE_E6, 3, NONE, BIT1},
+     {   NOTE_F6, 1, STACCATO, BIT2},
+     {   NOTE_E6, 1, STACCATO, BIT1},
+     {   NOTE_F6, 1, STACCATO, BIT2},
+     {   NOTE_E6, 1, NONE, BIT1},
+     {   NOTE_C5, 1, STACCATO, BIT3},
+     {   NOTE_A5, 4, NONE, BIT2},
+     {   NOTE_A5, 1, NONE, BIT2},
+     {   NOTE_D5, 1, NONE, BIT0},
+     {   NOTE_F5, 1, STACCATO, BIT2},
+     {   NOTE_G5, 1, STACCATO, BIT1},
+     {   NOTE_A5, 6, NONE, BIT2},
+     {   NOTE_A5, 1, NONE, BIT2},
+     {   NOTE_D5, 1, NONE, BIT0},
+     {   NOTE_F5, 1, STACCATO, BIT2},
+     {   NOTE_G5, 1, STACCATO, BIT1},
+     {   NOTE_D5, 6, NONE, BIT0},
 
 
 
@@ -102,8 +103,9 @@ const Note windmillHutNotes[] = {
 const Song windmillHut =
 {
     windmillHutNotes,
-    23,
-    5
+    43,
+    20,
+    355 // 80 bpm
 };
 
 
