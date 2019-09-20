@@ -4,4 +4,5 @@
 	<deviceFamily value="MSP430"/>
 	<connection value="common/targetdb/connections/TIMSP430-USB.xml"/>
 	<isTargetManual value="false"/>
+	<origin value="C:/Users/Fern/Documents/GitHub/ECE2049_Lab2"/>
 </projectOptions>

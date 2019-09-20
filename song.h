@@ -22,6 +22,7 @@ typedef struct Note
     int frequency; // Frequency in Hz
     int eighths; // Duration in sixteenth notes
     short modifier;
+    int button;
 } Note;
 
 typedef struct Song
@@ -53,29 +54,29 @@ const Note windmillHutNotes[] = {
 //     {   NOTE_F5, 2, NONE},
 //     { NOTE_REST, 1, REST},
 //     {   NOTE_E5, 5, NONE},
-     {   NOTE_D5, 1, NONE},
-     {   NOTE_F5, 1, NONE},
-     {   NOTE_D6, 4, NONE},
-     {   NOTE_D5, 1, NONE},
-     {   NOTE_F5, 1, NONE},
-     {   NOTE_D6, 4, NONE},
-     {   NOTE_E6, 3, NONE},
-     {   NOTE_F6, 1, STACCATO},
-     {   NOTE_E6, 1, STACCATO},
-     {   NOTE_F6, 1, STACCATO},
-     {   NOTE_E6, 1, NONE},
-     {   NOTE_C5, 1, STACCATO},
-     {   NOTE_A5, 4, NONE},
-     {   NOTE_A5, 1, NONE},
-     {   NOTE_D5, 1, NONE},
-     {   NOTE_F5, 1, STACCATO},
-     {   NOTE_G5, 1, STACCATO},
-     {   NOTE_A5, 6, NONE},
-     {   NOTE_A5, 1, NONE},
-     {   NOTE_D5, 1, NONE},
-     {   NOTE_F5, 1, STACCATO},
-     {   NOTE_G5, 1, STACCATO},
-     {   NOTE_D5, 6, NONE},
+     {   NOTE_D5, 1, NONE, 1},
+     {   NOTE_F5, 1, NONE, 1},
+     {   NOTE_D6, 4, NONE, 1},
+     {   NOTE_D5, 1, NONE, 1},
+     {   NOTE_F5, 1, NONE, 1},
+     {   NOTE_D6, 4, NONE, 1},
+     {   NOTE_E6, 3, NONE, 1},
+     {   NOTE_F6, 1, STACCATO, 1},
+     {   NOTE_E6, 1, STACCATO, 1},
+     {   NOTE_F6, 1, STACCATO, 1},
+     {   NOTE_E6, 1, NONE, 1},
+     {   NOTE_C5, 1, STACCATO, 1},
+     {   NOTE_A5, 4, NONE, 1},
+     {   NOTE_A5, 1, NONE, 1},
+     {   NOTE_D5, 1, NONE, 1},
+     {   NOTE_F5, 1, STACCATO, 1},
+     {   NOTE_G5, 1, STACCATO, 1},
+     {   NOTE_A5, 6, NONE, 1},
+     {   NOTE_A5, 1, NONE, 1},
+     {   NOTE_D5, 1, NONE, 1},
+     {   NOTE_F5, 1, STACCATO, 1},
+     {   NOTE_G5, 1, STACCATO, 1},
+     {   NOTE_D5, 6, NONE, 1},
 
 
 

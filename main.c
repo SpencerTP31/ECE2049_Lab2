@@ -34,15 +34,18 @@ typedef enum State
     LOSS_SCREEN
 } State;
 
+// Important Global Variables
+int currentSecond;
+int sec;
+
 // Function Prototypes
 void drawWelcome();
 void drawLoss();
 void drawNextLevel(int);
-bool drawCountdown(int, int);
+bool drawCountdown(void);
 void drawAliens(Alien*, int);
 
 // Write  a  function  to  configure  the  4  lab  board  buttons,  S1  through  S4
-
 void configureButtons() {
     // P7.0, P3.6, P2.2, P7.4
     // Configure P2.2
@@ -61,9 +64,38 @@ void configureButtons() {
     P7REN |= (BIT4 | BIT0); // Enable pull-up resistors
 }
 
+void configTimerA2(void)
+{
+    TA2CTL = TASSEL_1 + ID_0 + MC_1;
+    TA2CCR0 = 164; // = ~1/200 seconds
+    TA2CCTL0 = CCIE; // TA2CCR0 interrupt enabled
+
+    _BIS_SR(GIE); // Enable interrupts now, so we don't have to do it in main later
+}
+
+#pragma vector=TIMER2_A0_VECTOR
+__interrupt void Timer_A2_ISR(void)
+{
+    int realCount = 0; // Increments every 5 milliseconds
+    int leap = 0; // Helps us mitigate cumulative error
+    int sec = 0; // Increments every half second
+
+    if (leap < 141)
+    {
+        realCount++;
+        leap++;
+    } else {
+        realCount += 2;
+        leap = 0;
+    }
+
+    if (realCount % 200 == 0)
+    {
+        sec++;
+    }
+}
 
 // Write  a  function  that  returns  the  state  of  the  lab  board  buttons  with  1=pressed  and  0=not pressed.
-
 int getButtonState() {
     char ret = 0x00;
     // P2.2
@@ -77,30 +109,28 @@ int getButtonState() {
     return ret;
 }
 
-// Write a complete C function to configure and light 2 user LEDs on the MSP430F5529 Launchpad board based on the char argument
-// passed. If BIT0 of the argument = 1, LED1 is lit and if BIT0=0 then LED1 is off. Similarly, if BIT1 of the argument = 1, LED2
-// is lit and if BIT1=0 then LED2 is off.
-void configureUserLEDs(char outputState) {
-    // P4.7, P1.0
-    // Configure P1.1
-    P1SEL &= ~(BIT0); // Select pins for DI/O
-    P1DIR |= BIT0; // Set pin as output
-    P1OUT &= ~(BIT0); // Set off by default
+void setLED(unsigned char state)
+{
+    unsigned char mask = 0;
 
-        // Configure P4.7
-    P4SEL &= ~(BIT7); // Select pins for DI/O
-    P4DIR |= BIT7; // Set pin as output
-    P4OUT &= ~(BIT7); // Set off by default
+    // Turn all LEDs off to start
+    P6OUT &= ~(BIT4|BIT3|BIT2|BIT1);
 
-    if(outputState | BIT0) P1OUT |= BIT0;
-    if(outputState | BIT1) P4OUT |= BIT7;
+    if (state & BIT0)
+        mask |= BIT4;   // Right most LED P6.4
+    if (state & BIT1)
+        mask |= BIT3;   // next most right LED P.3
+    if (state & BIT2)
+        mask |= BIT1;   // third most left LED P6.1
+    if (state & BIT3)
+        mask |= BIT2;   // Left most LED on P6.2
+    P6OUT |= mask;
 }
 
 // What data structure(s) will you use to store pitch, duration and the corresponding LED? What length songs will you eventually
 // want to play? Given how you choose to save your notes, etc., how much memory will that require?
 
 // Total of 3 bytes
-
 
 
 // Declare globals here
@@ -111,7 +141,7 @@ void main(void)
     int i;
     unsigned char keyPressed = 0, lastKeyPressed = 0;
     unsigned long int mainCounter = 0, auxCounter = 0, auxCounter2 = 0;
-    State state = WELCOME_SCREEN;
+    State state = PLAYING_GAME;
 
     int noteCounter = 0;
     Song currentSong;
@@ -121,12 +151,15 @@ void main(void)
     WDTCTL = WDTPW | WDTHOLD;    // Stop watchdog timer
 
     initLeds();
+    configTimerA2();
     configDisplay();
     configKeypad();
+    configureButtons();
 
     while (1)
     {
         keyPressed = getKey();
+//        buttonPressed = getButtonState();
 
         if (auxCounter2 > 0)
         {
@@ -159,10 +192,10 @@ void main(void)
                     }
                     break;
                 case START_COUNT_DOWN:
-                    auxCounter = mainCounter;
+//                    auxCounter = mainCounter;
                     state = COUNT_DOWN_SCREEN;
                 case COUNT_DOWN_SCREEN:
-                    if (drawCountdown(mainCounter, auxCounter))
+                    if (drawCountdown() == true)
                     {
                         state = START_LEVEL;
                     }
@@ -177,6 +210,9 @@ void main(void)
                     currentNote = currentSong.notes[0];
                     BuzzerOnFreq(currentNote.frequency);
                     auxCounter2 = currentNote.eighths * 700;
+
+//                    Graphics_Line line = { .xMin = 5, .xMax = 91, .yMin = 85 };
+//                    Graphics_drawLineH(&g_sContext, &line);
 
                     break;
                 case PLAYING_GAME:
@@ -198,9 +234,9 @@ void drawWelcome()
     Graphics_clearDisplay(&g_sContext);                // Clear the display
 
     // Write some text to the display
-    Graphics_drawStringCentered(&g_sContext, "SPACE", AUTO_STRING_LENGTH, 48,
+    Graphics_drawStringCentered(&g_sContext, "MSP430", AUTO_STRING_LENGTH, 48,
                                 25, TRANSPARENT_TEXT);
-    Graphics_drawStringCentered(&g_sContext, "INVADERS", AUTO_STRING_LENGTH, 48,
+    Graphics_drawStringCentered(&g_sContext, "HERO", AUTO_STRING_LENGTH, 48,
                                 35, TRANSPARENT_TEXT);
 
     Graphics_drawStringCentered(&g_sContext, "Press *", AUTO_STRING_LENGTH, 48,
@@ -267,34 +303,46 @@ void drawNextLevel(int level)
     Graphics_flushBuffer(&g_sContext);
 }
 
-bool drawCountdown(int mainCounter, int auxCounter)
+//bool drawCountdown(int mainCounter, int auxCounter)
+bool drawCountdown(void)
 {
-    if (auxCounter == mainCounter)
+    currentSecond = sec;
+    int secPassed = 0;
+    while(secPassed <= 3)
     {
-        Graphics_clearDisplay(&g_sContext); // Clear the display
-        Graphics_drawStringCentered(&g_sContext, "3", AUTO_STRING_LENGTH, 48,
-                                    50, TRANSPARENT_TEXT);
-        Graphics_flushBuffer(&g_sContext);
+        secPassed = sec - currentSecond;
     }
-    else if (mainCounter == auxCounter + 4000)
-    {
-        Graphics_clearDisplay(&g_sContext); // Clear the display
-        Graphics_drawStringCentered(&g_sContext, "2", AUTO_STRING_LENGTH, 48,
-                                    50, TRANSPARENT_TEXT);
-        Graphics_flushBuffer(&g_sContext);
-    }
-    else if (mainCounter == auxCounter + 8000)
-    {
-        Graphics_clearDisplay(&g_sContext); // Clear the display
-        Graphics_drawStringCentered(&g_sContext, "1", AUTO_STRING_LENGTH, 48,
-                                    50, TRANSPARENT_TEXT);
-        Graphics_flushBuffer(&g_sContext);
-    }
-    else if (mainCounter == auxCounter + 12000)
-    {
-        Graphics_clearDisplay(&g_sContext); // Clear the display
-        Graphics_flushBuffer(&g_sContext);
-        return true;
+    switch (secPassed) {
+        case 0:
+            Graphics_clearDisplay(&g_sContext); // Clear the display
+            Graphics_drawStringCentered(&g_sContext, "3", AUTO_STRING_LENGTH, 48,
+                                        50, TRANSPARENT_TEXT);
+            setLED(0x08);
+            Graphics_flushBuffer(&g_sContext);
+            break;
+        case 1:
+            Graphics_clearDisplay(&g_sContext); // Clear the display
+            Graphics_drawStringCentered(&g_sContext, "2", AUTO_STRING_LENGTH, 48,
+                                        50, TRANSPARENT_TEXT);
+            setLED(0x04);
+            Graphics_flushBuffer(&g_sContext);
+        case 2:
+            Graphics_clearDisplay(&g_sContext); // Clear the display
+            Graphics_drawStringCentered(&g_sContext, "1", AUTO_STRING_LENGTH, 48,
+                                        50, TRANSPARENT_TEXT);
+            setLED(0x02);
+            Graphics_flushBuffer(&g_sContext);
+        case 3:
+            Graphics_clearDisplay(&g_sContext); // Clear the display
+            Graphics_drawStringCentered(&g_sContext, "Go!", AUTO_STRING_LENGTH, 48,
+                                        50, TRANSPARENT_TEXT);
+            setLED(0x0E);
+            Graphics_flushBuffer(&g_sContext);
+        case 4:
+            Graphics_clearDisplay(&g_sContext); // Clear the display
+            Graphics_flushBuffer(&g_sContext);
+            setLED(0x00);
+            return true; // Not sure what this is for, but it was here
     }
     return false;
 }
@@ -314,4 +362,5 @@ void drawAliens(Alien* aliens, int alienCount)
     }
     Graphics_flushBuffer(&g_sContext);
 }
+
 
