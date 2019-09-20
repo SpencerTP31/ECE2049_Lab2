@@ -5,7 +5,7 @@
 #include <msp430.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "notes.h"
+#include "song.h"
 
 /* Peripherals.c and .h are where the functions that implement
  * the LEDs and keypad, etc are. It is often useful to organize
@@ -100,12 +100,7 @@ void configureUserLEDs(char outputState) {
 // want to play? Given how you choose to save your notes, etc., how much memory will that require?
 
 // Total of 3 bytes
-typedef struct Note
-{
-    int pitch; // Period in ACLK ticks
-    int duration; // Duration in milliseconds
-    int delay; // Silence after the note in milliseconds
-} Note;
+
 
 
 // Declare globals here
@@ -114,66 +109,13 @@ typedef struct Note
 void main(void)
 {
     int i;
-    int levelBottom = 85; // The lowest the top of the alien character can go before you lose the level
     unsigned char keyPressed = 0, lastKeyPressed = 0;
     unsigned long int mainCounter = 0, auxCounter = 0, auxCounter2 = 0;
     State state = WELCOME_SCREEN;
-    Note notes[] = {
-      {NOTE_D5, 100, 80},
-      {NOTE_F5, 100, 80},
-      {NOTE_D6, 200, 250},
 
-      {NOTE_D5, 100, 80},
-      {NOTE_F5, 100, 80},
-      {NOTE_D6, 200, 250},
-
-      {NOTE_E6, 200, 200},
-      {NOTE_F6, 100, 100},
-      {NOTE_E6, 100, 80},
-      {NOTE_F6, 100, 80},
-      {NOTE_E6, 100, 80},
-      {NOTE_C6, 100, 80},
-      {NOTE_A5, 100, 300},
-
-      {NOTE_D5, 200,100},
-      {NOTE_F5, 100,100},
-      {NOTE_G5, 100,100},
-      {NOTE_A5, 100,500},
-
-      {NOTE_A5, 200,100},
-      {NOTE_D5, 200,100},
-      {NOTE_F5, 100,100},
-      {NOTE_G5, 100,100},
-      {NOTE_E5, 100, 500},
-
-      {NOTE_D5, 100,80},
-      {NOTE_F5, 100,80},
-      {NOTE_D6, 200,250},
-
-      {NOTE_D5, 100,80},
-      {NOTE_F5, 100,80},
-      {NOTE_D6, 200,250},
-
-      {NOTE_E6, 200,200},
-      {NOTE_F6, 100,100},
-      {NOTE_E6, 100,80},
-      {NOTE_F6, 100,80},
-      {NOTE_E6, 100,80},
-      {NOTE_C6, 100,80},
-      {NOTE_A5, 100,300},
-
-      {NOTE_D5, 200,100},
-      {NOTE_F5, 100,100},
-      {NOTE_G5, 100,100},
-      {NOTE_A5, 300, 100},
-      {NOTE_A5, 200, 100},
-      {NOTE_D5, 2000, 2000}
-    };
-
-    int noteCounter = 0, noteCount = 41;
-    Note currentNote = notes[0];
-    BuzzerOnFreq(currentNote.pitch);
-    auxCounter2 = currentNote.duration;
+    int noteCounter = 0;
+    Song currentSong;
+    Note currentNote;
     bool shouldPlay = false;
 
     WDTCTL = WDTPW | WDTHOLD;    // Stop watchdog timer
@@ -186,24 +128,66 @@ void main(void)
     {
         keyPressed = getKey();
 
-
-        mainCounter++;
         if (auxCounter2 > 0)
         {
             auxCounter2--;
             if(!auxCounter2) {
                 if(shouldPlay) {
                     noteCounter++;
-                    currentNote = notes[noteCounter % noteCount];
-                    BuzzerOnFreq(currentNote.pitch);
-                    auxCounter2 = currentNote.duration * 7;
+                    currentNote = currentSong.notes[noteCounter % currentSong.noteCount];
+                    BuzzerOnFreq(currentNote.frequency);
+                    auxCounter2 = currentNote.eighths * 700;
                 } else {
                     BuzzerOff();
-                    auxCounter2 = currentNote.delay * 7;
+                    auxCounter2 = currentSong.msBetweenNotes * 7;
                 }
                 shouldPlay = !shouldPlay;
             }
         }
+
+        switch (state)
+                {
+                case WELCOME_SCREEN:
+                    drawWelcome();
+                    state = WAIT_FOR_START;
+                    break;
+                case WAIT_FOR_START:
+                    if (keyPressed == '*')
+                    {
+                        state = START_COUNT_DOWN;
+                        BuzzerOff();
+                    }
+                    break;
+                case START_COUNT_DOWN:
+                    auxCounter = mainCounter;
+                    state = COUNT_DOWN_SCREEN;
+                case COUNT_DOWN_SCREEN:
+                    if (drawCountdown(mainCounter, auxCounter))
+                    {
+                        state = START_LEVEL;
+                    }
+                    break;
+                case NEXT_LEVEL_SCREEN:
+//                    drawNextLevel(level);
+                    state = WAIT_FOR_START;
+                    break;
+                case START_LEVEL:
+                    state = PLAYING_GAME;
+                    currentSong = windmillHut;
+                    currentNote = currentSong.notes[0];
+                    BuzzerOnFreq(currentNote.frequency);
+                    auxCounter2 = currentNote.eighths * 700;
+
+                    break;
+                case PLAYING_GAME:
+                    break;
+                case LOSS_SCREEN:
+                    drawLoss();
+                    state = WAIT_FOR_START;
+                    break;
+                }
+
+        mainCounter++;
         lastKeyPressed = keyPressed;
     }
 }
