@@ -1,6 +1,7 @@
-/************** ECE2049 DEMO CODE ******************/
-/**************  13 March 2019   ******************/
-/***************************************************/
+/**************** ECE2049 Lab 2 ******************/
+/***************  13 March 2019 ******************/
+/******  Benjamin Ward, Jonathan Ferreira ********/
+/*************************************************/
 
 #include <msp430.h>
 #include <stdlib.h>
@@ -8,6 +9,8 @@
 #include <inc/song.h>
 #include <inc/peripherals.h>
 
+
+// States utilized in main program state machine
 typedef enum State
 {
     WELCOME_SCREEN,
@@ -22,13 +25,13 @@ typedef enum State
     RESET
 } State;
 
-// Important Global Variables
+// Global variables
 int currentSecond;
-int clock; // 5ms (200Hz) resolution
-int leap = 0; // Helps us mitigate cumulative error
-char countdownState = 0;
+int clock; // 5ms (200Hz) resolution clock based on timer A2
+int leap = 0; // Helps us mitigate cumulative error in timer-based clock
+char countdownState = 0; // Track state for countdown screen
 
-// Function Prototypes
+// Function prototypes
 void drawWelcome();
 void drawLoss();
 void drawWin();
@@ -41,13 +44,16 @@ unsigned char getButtonState();
 void configTimerA2();
 void configButtons();
 
+// Program entry point
 void main(void)
 {
+    // Main loop state
     int score = 0;
     unsigned char keyPressed = 0, buttonsPressed;
     unsigned long int startTime, deltaTime;
     State state = WELCOME_SCREEN;
 
+    // Song-playing state
     int noteCounter = 0;
     Song currentSong;
     Note currentNote;
@@ -55,6 +61,7 @@ void main(void)
 
     WDTCTL = WDTPW | WDTHOLD; // Stop watchdog timer
 
+    // Set up and configure peripherals and I/O
     initLeds();
     configSmolLEDs();
     configTimerA2();
@@ -62,6 +69,7 @@ void main(void)
     configKeypad();
     configButtons();
 
+    // Main loop
     while (1)
     {
         keyPressed = getKey();
@@ -387,13 +395,14 @@ __interrupt void Timer_A2_ISR(void)
         leap = 0;
     }
 
+    // Clock has ~5ms resolution, so every 200 interrupts is a second
     if (clock % 200 == 0)
     {
         currentSecond++;
     }
 }
 
-// Write  a  function  to  configure  the  4  lab  board  buttons,  S1  through  S4
+// Configure lab board buttons
 void configButtons()
 {
     // P7.0, P3.6, P2.2, P7.4
