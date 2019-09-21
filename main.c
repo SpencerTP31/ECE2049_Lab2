@@ -15,6 +15,7 @@ typedef enum State
 {
     WELCOME_SCREEN,
     WAIT_FOR_START,
+    SONG_SELECT,
     START_COUNT_DOWN,
     COUNT_DOWN_SCREEN,
     NEXT_LEVEL_SCREEN,
@@ -35,7 +36,7 @@ char countdownState = 0; // Track state for countdown screen
 void drawWelcome();
 void drawLoss();
 void drawWin();
-void drawNextLevel(int);
+void drawSongSelect(int);
 bool drawCountdown(int);
 void setLEDs(unsigned char);
 void configSmolLEDs();
@@ -89,19 +90,37 @@ void main(void)
             state = WAIT_FOR_START;
             break;
         case WAIT_FOR_START:
+            // If the key is pressed, transition to song select
+            if (keyPressed == '*')
+            {
+                state = SONG_SELECT
+            }
+            break;
+        case SONG_SELECT:
+            // Using bottom buttons to pick level
+            buttonsPressed = getButtonState();
+
+            // Draws song select with Windmill Hut being the default
+            drawSongSelect(1);
+            if (buttonsPressed) {
+                drawSongSelect(buttonsPressed);
+            }
+
             // If the key is pressed, transition to countdown
             if (keyPressed == '*')
             {
-                state = START_COUNT_DOWN;
-                // TODO: Compress this into RESET state
-                BuzzerOff();
-                setLEDs(0);
-                countdownState = 0;
-                score = 0;
-                noteCounter = 0;
+                state = SONG_SELECT
             }
             break;
         case START_COUNT_DOWN:
+            // Moved from WAIT_FOR_START, so I can make room for SONG_SELECT
+            // TODO: Compress this into RESET state
+            BuzzerOff();
+            setLEDs(0);
+            countdownState = 0;
+            score = 0;
+            noteCounter = 0;
+
             // Save the timestamp for the beginning of the countdown and transition to the next state
             startTime = clock;
             state = COUNT_DOWN_SCREEN;
@@ -176,8 +195,6 @@ void main(void)
 
             // Display the current note button on the board LEDs
             setLEDs(currentNote.button);
-
-            buttonsPressed = getButtonState();
 
             // If the current note has not yet been scored (i.e. no buttons have yet been pressed)
             // and the note is not a rest, check if it should be scored
@@ -299,18 +316,33 @@ void drawWin()
     Graphics_flushBuffer(&g_sContext);
 }
 
-void drawNextLevel(int level)
+void drawSongSelect(int input)
 {
 
     Graphics_clearDisplay(&g_sContext);
 
-    char buffer[10];
-    snprintf(buffer, 9, "Level %d", level);
+    // char buffer[10];
+    // snprintf(buffer, 9, "Level %d", level);
 
     // Write some text to the display
     Graphics_drawStringCentered(&g_sContext, (uint8_t*) buffer,
                                 AUTO_STRING_LENGTH, 48, 35,
                                 TRANSPARENT_TEXT);
+
+    // There's definitely a better way to do this, but for now this'll do
+    // Eventually just use snprintf
+    if (input == 1) {   // Assuming left-most button returns 1, this should work. 
+    Graphics_drawStringCentered(&g_sContext, "|X| Windmill hut", AUTO_STRING_LENGTH, 25,
+                                70, TRANSPARENT_TEXT);
+    Graphics_drawStringCentered(&g_sContext, "|  | Second song", AUTO_STRING_LENGTH, 35,
+                                80, TRANSPARENT_TEXT);
+    } 
+    if (input == 2) {   // Assuming second to left button returns 2, this should work.
+        Graphics_drawStringCentered(&g_sContext, "|  | Windmill hut", AUTO_STRING_LENGTH, 25,
+                            70, TRANSPARENT_TEXT);
+        Graphics_drawStringCentered(&g_sContext, "|X| Second song", AUTO_STRING_LENGTH, 35,
+                                    80, TRANSPARENT_TEXT);
+    }
 
     Graphics_drawStringCentered(&g_sContext, "Press *", AUTO_STRING_LENGTH, 48,
                                 70, TRANSPARENT_TEXT);
