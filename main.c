@@ -16,6 +16,7 @@ typedef enum State
     WELCOME_SCREEN,
     WAIT_FOR_START,
     SONG_SELECT,
+    SONG_SELECT_CHOOSE,
     START_COUNT_DOWN,
     COUNT_DOWN_SCREEN,
     NEXT_LEVEL_SCREEN,
@@ -31,6 +32,12 @@ int currentSecond;
 int clock; // 5ms (200Hz) resolution clock based on timer A2
 int leap = 0; // Helps us mitigate cumulative error in timer-based clock
 char countdownState = 0; // Track state for countdown screen
+int drawn;
+int current = 0;
+char* songSelection[4] = {"Windmill Hut",
+                          "Second Song",
+                          "Third Song",
+                          "Fourth Song",};
 
 // Function prototypes
 void drawWelcome();
@@ -93,23 +100,28 @@ void main(void)
             // If the key is pressed, transition to song select
             if (keyPressed == '*')
             {
-                state = SONG_SELECT
+                state = SONG_SELECT;
             }
             break;
         case SONG_SELECT:
-            // Using bottom buttons to pick level
-            buttonsPressed = getButtonState();
-
             // Draws song select with Windmill Hut being the default
-            drawSongSelect(1);
-            if (buttonsPressed) {
-                drawSongSelect(buttonsPressed);
+            drawSongSelect(current);
+            state = SONG_SELECT_CHOOSE;
+            break;
+        case SONG_SELECT_CHOOSE:
+            if (current != '0' && keyPressed == '2')
+            {
+                current -= 1;
+                state = SONG_SELECT;
             }
-
-            // If the key is pressed, transition to countdown
+            if (current != '3' && keyPressed == '8')
+             {
+                 current += 1;
+                 state = SONG_SELECT;
+             }
             if (keyPressed == '*')
             {
-                state = SONG_SELECT
+                state = START_COUNT_DOWN;
             }
             break;
         case START_COUNT_DOWN:
@@ -147,6 +159,8 @@ void main(void)
             state = PLAYING_GAME;
             break;
         case PLAYING_GAME:
+            buttonsPressed = getButtonState();
+
             // Calculate the time since the last note started
             deltaTime = clock - startTime; // 1 deltaTime unit = 5ms
 
@@ -321,36 +335,22 @@ void drawSongSelect(int input)
 
     Graphics_clearDisplay(&g_sContext);
 
-    // char buffer[10];
-    // snprintf(buffer, 9, "Level %d", level);
+    char buffer[16];
+    snprintf(buffer, 15, "%s", songSelection[input]);
 
-    // Write some text to the display
-    Graphics_drawStringCentered(&g_sContext, (uint8_t*) buffer,
-                                AUTO_STRING_LENGTH, 48, 35,
-                                TRANSPARENT_TEXT);
-
-    // There's definitely a better way to do this, but for now this'll do
-    // Eventually just use snprintf
-    if (input == 1) {   // Assuming left-most button returns 1, this should work. 
-    Graphics_drawStringCentered(&g_sContext, "|X| Windmill hut", AUTO_STRING_LENGTH, 25,
+    Graphics_drawStringCentered(&g_sContext, "Pick a song!", AUTO_STRING_LENGTH, 48,
+                                15, TRANSPARENT_TEXT);
+    Graphics_drawStringCentered(&g_sContext, (uint8_t*) buffer, AUTO_STRING_LENGTH, 48,
+                                35, TRANSPARENT_TEXT);
+    Graphics_drawString(&g_sContext, "2: Scroll up", AUTO_STRING_LENGTH, 7,
+                                60, TRANSPARENT_TEXT);
+    Graphics_drawString(&g_sContext, "8: Scroll down", AUTO_STRING_LENGTH, 7,
                                 70, TRANSPARENT_TEXT);
-    Graphics_drawStringCentered(&g_sContext, "|  | Second song", AUTO_STRING_LENGTH, 35,
-                                80, TRANSPARENT_TEXT);
-    } 
-    if (input == 2) {   // Assuming second to left button returns 2, this should work.
-        Graphics_drawStringCentered(&g_sContext, "|  | Windmill hut", AUTO_STRING_LENGTH, 25,
-                            70, TRANSPARENT_TEXT);
-        Graphics_drawStringCentered(&g_sContext, "|X| Second song", AUTO_STRING_LENGTH, 35,
-                                    80, TRANSPARENT_TEXT);
-    }
-
-    Graphics_drawStringCentered(&g_sContext, "Press *", AUTO_STRING_LENGTH, 48,
-                                70, TRANSPARENT_TEXT);
-    Graphics_drawStringCentered(&g_sContext, "to Begin", AUTO_STRING_LENGTH, 48,
+    Graphics_drawString(&g_sContext, "*: Begin", AUTO_STRING_LENGTH, 7,
                                 80, TRANSPARENT_TEXT);
 
     // Draw a box around everything because it looks nice
-    Graphics_Rectangle box = { .xMin = 5, .xMax = 91, .yMin = 5, .yMax = 91 };
+    Graphics_Rectangle box = { .xMin = 4, .xMax = 92, .yMin = 4, .yMax = 92 };
     Graphics_drawRectangle(&g_sContext, &box);
 
     Graphics_flushBuffer(&g_sContext);
