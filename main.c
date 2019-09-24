@@ -32,7 +32,6 @@ int currentSecond;
 int clock; // 5ms (200Hz) resolution clock based on timer A2
 int leap = 0; // Helps us mitigate cumulative error in timer-based clock
 char countdownState = 0; // Track state for countdown screen
-int drawn;
 int current = 0;
 char* songSelection[4] = {"Windmill Hut",
                           "Second Song",
@@ -109,12 +108,12 @@ void main(void)
             state = SONG_SELECT_CHOOSE;
             break;
         case SONG_SELECT_CHOOSE:
-            if (current != '0' && keyPressed == '2')
+            if (keyPressed == '2' && current > 0)
             {
                 current -= 1;
                 state = SONG_SELECT;
             }
-            if (current != '3' && keyPressed == '8')
+            if (keyPressed == '8' && current < 3)
              {
                  current += 1;
                  state = SONG_SELECT;
